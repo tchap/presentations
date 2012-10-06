@@ -9,20 +9,67 @@
 \titlepage
 \end{frame}
 
-\section{The Big Picture}
-\subsection{Traditional Database Engines}
-\begin{frame}{Relational Databases and Friends}
+\section{Introduction}
+\subsection{Traditional DBMS}
+\begin{frame}{Relational Database Management Systems}
+  \framesubtitle{The nice side}
+  \begin{itemize}
+    \item Solid theoretical background
+    \item Large companies behind implementations proven by years
+    \item Widespread
+  \end{itemize}
 \end{frame}
 
-\begin{frame}{Usage}
+\begin{frame}{Relational Database Management Systems}
+  \framesubtitle{The useful side}
+  \begin{itemize}
+    \item Structured data
+    \item Ad-hoc queries (run time flexibility)
+    \item Solid and safe, simply reliable \ldots
+  \end{itemize}
 \end{frame}
 
-\begin{frame}{Limitations}
+\begin{frame}{Relational Database Management Systems}
+  \framesubtitle{The dark side}
+  The core principle of RDBMS is to be consistent at all cost. \\
+  This is exactly what does not play well with distributed environment.
 \end{frame}
 
-\section{The Big Picture}
-\subsection{NoSQL Databases}
-\begin{frame}{What NoSQL stands for?}
+\subsection{The Big Picture}
+\begin{frame}{The Big Picture}
+  \framesubtitle{CAP theorem}
+  No distributed computer system can simultaneously provide all of
+  the following quarantees:
+  \begin{itemize}
+    \item Consistency
+    \item Availability
+    \item Partition tolerance
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Big Picture}
+  \framesubtitle{Consistency model revised}
+  \begin{description}
+    \item[ACID] (pesimistic - Consistency) \hfill \\
+    \begin{enumerate}
+      \item Atomicity
+      \item Consistency
+      \item Isolation
+      \item Durability
+    \end{enumerate}
+    \item[BASE] (optimistic - Availability + Partition tolerance) \hfill \\
+    \begin{enumerate}
+      \item Basically Available
+      \item Soft state
+      \item Eventual consistency
+    \end{enumerate}
+  \end{description} 
+\end{frame}
+
+\subsection{The NoSQL Movement}
+\begin{frame}{The NoSQL Movement}
+  \framesubtitle{What the hell is that? I want my SQL!}
+  Bubu
 \end{frame}
 
 \end{document}
