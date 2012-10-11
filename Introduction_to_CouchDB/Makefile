@@ -1,7 +1,13 @@
+BASENAME := Introduction_to_CouchDB
+
 %.pdf: %.tex
 	pdflatex $<
 
-all: Introduction_to_CouchDB.pdf
+all: ${BASENAME}.pdf
+
+sections: ${BASENAME}.pdf
+	@touch ${BASENAME}.tex
+	@make
 
 clean:
-	$(RM) *.aux *.log *.nav *.out *.pdf *.snm *.toc
+	$(RM) *.aux *.log *.nav *.out *.pdf *.snm *.toc *.vrb

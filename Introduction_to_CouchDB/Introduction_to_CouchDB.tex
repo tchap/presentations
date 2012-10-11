@@ -1,6 +1,7 @@
 \documentclass{beamer}
 \usepackage[utf8]{inputenc}
 \usepackage{tikz}
+\usepackage{verbatim}
 \usetheme{Warsaw}
 \title{Introduction to CouchDB}
 \author{Ondřej Kupka}
@@ -25,14 +26,14 @@
     \begin{itemize}
       \item Suitable for any data model that can be captured in relations
       \item Ad-hoc queries (run time flexibility)
-      \item Consistency at all cost (transactions)
+      \item Consistency (transactions)
     \end{itemize}
   \end{itemize}
 \end{frame}
 
 \begin{frame}{Current Situation on the Databases Market}
   \framesubtitle{New challenges}
-  With the advent of web-scale applications we are facing many new~challenges.
+  With the advent of web-scale applications, we are facing many new~challenges.
   Huge amount of loosely structured data needs to~be processed.
   What we seek is:
   \begin{itemize}
@@ -58,18 +59,18 @@
       \filldraw[fill=lightgray,even odd rule]
         (60:1.2) circle (1) ++(90:0.3) node{C}
         (0:0) circle (1) ++(225:0.3) node{A}
-        (0:1.2) circle (1) ++(315:0.3)node{PT};
+        (0:1.2) circle (1) ++(315:0.3) node{PT};
     \end{tikzpicture}
   \end{center}
   \fontsize{6}{8}\selectfont
-  Began as a conjecture by Eric Brewer in 2000, being proven by Seth Gilbert
+  Began as a conjecture by Eric Brewer in 2000 and was proven by Seth Gilbert
   and Nancy Lynch of MIT in 2002.\\
 \end{frame}
 
 \begin{frame}{The Big Picture}
   \framesubtitle{Consistency model revised}
   \begin{description}
-    \item[ACID] (traditional, pesimistic - Consistency) \hfill
+    \item[ACID] (pesimistic - Consistency + Availability) \hfill
     \begin{enumerate}
       \item Atomicity
       \item Consistency
@@ -86,12 +87,87 @@
 \end{frame}
 
 \begin{frame}{The Big Picture}
-  \framesubtitle{Considering BASE}
+  \framesubtitle{More Basic Terms}
+  There are a few more terms we should understand\\before digging deeper:
+  \begin{itemize}
+    \item Replication
+    \begin{itemize}
+      \item master-slave
+      \item master-master
+    \end{itemize}
+    \item Sharding
+    \item Failover
+    \item MapReduce
+  \end{itemize}
 \end{frame}
 
 \subsection{The NoSQL Movement}
 \begin{frame}{The NoSQL Movement}
-  \framesubtitle{What the hell is that? I want my SQL!}
+  \framesubtitle{History and basic principles}
+  \begin{itemize}
+    \item In 1998 Carlo Strozzi used the term to name light-weight DBs with no SQL,
+          and also no relations. He then suggested to call them 'NoREL'.
+    \item Reintroduced by Eric Evans of Rackspace in 2009 to name\\a growing
+          number of non-relational distributed DBs\\not attemping to provide ACID.
+    \item Today it is usually translated as 'Not only SQL'.
+    \item In 2011, work began on UnQL, a query language for NoSQL databases.
+          Does not cover the data definition.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The NoSQL Movement}
+  \framesubtitle{Characteristics}
+  Among ideas characterizing the NoSQL databases are:
+  \begin{itemize}
+    \item High optimisation for just the basic (CRUD) operations
+    \item Providing little functionality beyond record storage
+    \item Trading run time flexibility for gains in performance and scalability
+          for certain data models (specialization)
+    \item No SQL as the query language
+    \item No ACID guarantees (BASE)
+    \item Distributed and fault-tolerant
+  \end{itemize}
+  So basically we get systems that are hard to bring down and are able to handle
+  enormous amount of data, but they are sacrificing functionality for that.
+  If you, however, pick up the right system for you, it can do magic.
+\end{frame}
+
+\begin{frame}{The NoSQL Movement}
+  \framesubtitle{Taxonomy of NoSQL databases}
+  \begin{itemize}
+    \item Key-value stores
+    \item \alert<2>{Document stores}
+    \item Column families
+    \item Graph databases
+    \item Tuple/RDF stores
+    \item XML databases
+    \item Object stores
+    \item \ldots
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{The NoSQL Movement}
+  \framesubtitle{Document stores}
+  You can imagine a document store as a key-value store,\\but the database begins
+  to understand the structure of values (called 'documents') stored in there,
+  which implies:
+  \begin{itemize}
+    \item Need for particular encoding of the data (XML, JSON, \ldots),
+          but still no structure (no hard-coded schemas)
+    \item It is possible to query the data (and do computations - MapReduce)
+    \item It works in a CRUD way, a document is the basic unit.
+          Operations on documents are usually the only atomic thing.
+  \end{itemize}
+  \begin{verbatim}
+  { "firstName": "John", "lastName": "Smith" }
+  \end{verbatim}
+  Examples: MongoDB, \alert<2>{CouchDB}, RavenDB (transactions!)
+\end{frame}
+
+\section{CouchDB in Details}
+\subsection{Basic principles}
+\begin{frame}{Basic principles}
+
 \end{frame}
 
 \end{document}
