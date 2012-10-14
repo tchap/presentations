@@ -5,7 +5,7 @@ BASENAME := Introduction_to_CouchDB
 
 all: ${BASENAME}.pdf
 
-sections: ${BASENAME}.pdf
+toc: ${BASENAME}.pdf
 	@touch ${BASENAME}.tex
 	@make
 
