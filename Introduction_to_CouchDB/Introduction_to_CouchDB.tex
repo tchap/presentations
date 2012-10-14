@@ -145,30 +145,149 @@
     \item It works in a CRUD way, a document is the basic unit.
           Operations on documents are usually the only atomic thing.
   \end{itemize}
+  \fontsize{8}{10}\selectfont
   \begin{verbatim}
   { "firstName": "John", "lastName": "Smith" }
   \end{verbatim}
   Examples: MongoDB, \alert<2>{CouchDB}, RavenDB (transactions!)
 \end{frame}
 
-\section{Apache CouchDB}
-\subsection{CouchDB way of storing documents}
+\section{CouchDB}
+\subsection{Introduction}
+\begin{frame}[fragile]{Before We Start}
+  \framesubtitle{Installing and Starting CouchDB}
+  Let us set up CouchDB so that we can try what we have learned immediately!
+  Change defaults for production! There is a webmin called Futon
+  bundled with CouchDB that you can use...
+  \fontsize{6}{8}\selectfont
+  \begin{verbatim}
+  $ brew install couchdb # or apt-get install or whatever...
+  $ couchdb
+  Apache CouchDB 1.2.0 (LogLevel=info) is starting.
+  Apache CouchDB has started. Time to relax.
+  [info] [<0.31.0>] Apache CouchDB has started on http://127.0.0.1:5984/
+  ...
+
+  $ open http://127.0.0.1:5984/_utils # for Futon
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}{Overview and Core Features}
+  \begin{itemize}
+    \item Initial release in 2005, Apache project in 2008 (OSS)
+    \item \textit{A database that completely embraces the web}
+    \begin{itemize}
+      \item Store JSON documents
+      \item Access them via HTTP
+      \item Query, combine and transform data with JavaScript
+      \item Even serve applications directly out of CouchDB
+    \end{itemize}
+    \item ACID semantics (Multi-Version Concurrency Control)
+    \item Eventual consistency
+    \item Built for being offline (Partition tolerance)
+    \item Distributed architecture with replication
+    \item MapReduce views, and indexes
+    \item REST API
+  \end{itemize}
+\end{frame}
+
+\subsection{Document Storage}
+\begin{frame}[fragile]{Basics}
+  \begin{itemize}
+    \item Server stores named databases, which contain\\JSON documents (mostly)
+    \item Documents are primary units of data; they have any number of fields
+          and attachments, and database metadata like id\\and revision
+    \item Update model is optimistic and lockless
+    \begin{itemize}
+      \item load - modify - save not atomic, MVCC used to signal conflicts
+    \end{itemize}
+  \end{itemize}
+  \fontsize{6}{8}\selectfont
+  \begin{verbatim}
+  {"_id":"89027e7860926e4815267048520017df","_rev":"1-bfb0d347cff4cb38161d90ea749fe2a0",
+   "firstname":"Ondrej","surname":"Kupka"}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Demo 1 - Database and Document Creation}
+  \fontsize{6}{8}\selectfont
+  \begin{verbatim}
+  $ curl -X PUT http://127.0.0.1:5984/testdb
+  {"ok":true}
+  $ curl -X GET http://127.0.0.1:5984/_uuids
+  {"uuids":["89027e7860926e4815267048520017ec"]}
+  $ curl -X PUT http://127.0.0.1:5984/testdb/89027e7860926e4815267048520017ec \
+  > -d '{"firstname":"Ondrej","surname":"Kupka"}'
+  {"ok":true,"id":"89027e7860926e4815267048520017ec","rev":"1-bfb0d347cff4cb38161d90ea749fe2a0"}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Demo 2 - Conflict Occurence and Resolution}
+  \fontsize{6}{8}\selectfont
+  \begin{verbatim}
+  ME$ curl -X GET http://127.0.0.1:5984/testdb/89027e7860926e4815267048520017ec
+  {"_id":"89027e7860926e4815267048520017ec","_rev":"1-bfb0d347cff4cb38161d90ea749fe2a0",
+   "firstname":"Ondrej","surname":"Kupka"}
+
+  HIM$ curl -X GET http://127.0.0.1:5984/testdb/89027e7860926e4815267048520017ec
+  {"_id":"89027e7860926e4815267048520017ec","_rev":"1-bfb0d347cff4cb38161d90ea749fe2a0",
+   "firstname":"Ondrej","surname":"Kupka"}
+
+  HIM$ curl -X PUT http://127.0.0.1:5984/testdb/89027e7860926e4815267048520017ec \
+  >  -d '{"_rev":"1-bfb0d347cff4cb38161d90ea749fe2a0","firstname":"Ondrej","surname":"Krupka"}'
+  {"ok":true,"id":"89027e7860926e4815267048520017ec","rev":"2-e1db85ed9d716a6555736282d7bee514"}
+
+  ME$ curl -X PUT http://127.0.0.1:5984/testdb/89027e7860926e4815267048520017ec \
+  >  -d '{"_rev":"1-bfb0d347cff4cb38161d90ea749fe2a0","firstname":"Ondrej","surname":"Krupicka"}'
+  {"error":"conflict","reason":"Document update conflict."}
+
+  ME$ curl -X GET http://127.0.0.1:5984/testdb/89027e7860926e4815267048520017ec
+  {"_id":"89027e7860926e4815267048520017ec","_rev":"2-e1db85ed9d716a6555736282d7bee514",
+   "firstname":"Ondrej","surname":"Krupka"}
+
+  ME$ curl -X PUT http://127.0.0.1:5984/testdb/89027e7860926e4815267048520017ec \
+  > -d '{"_rev":"2-e1db85ed9d716a6555736282d7bee514","firstname":"Ondrej","surname":"Krupicka"}'
+  {"ok":true,"id":"89027e7860926e4815267048520017ec","rev":"3-3182f9d7d36974848e9bcbb0f71dcfcc"}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}{ACID Properties and Implementation Details}
+  \begin{itemize}
+    \item Commited data are never overwritten, appending only,\\always consistent
+    \begin{enumerate}
+      \item All data and updates flushed to the disk synchronously
+      \item Updated DB header written in two consecutive, identical chunks
+            to the beginning of the file, then flushed.
+    \end{enumerate}
+    \item Updates serialized except binary blobs
+    \item B-tree indexes of documents (DocID, SeqID),\\B-trees everywhere
+    \item Clients are never locked out - revision = consistent snapshot
+    \item Compaction
+    \item Written in Erlang/OTP - concurrent (actors), robust, share-nothing
+  \end{itemize}
+\end{frame}
+
+\subsection{Querying and Manipulating Stored Data}
+\begin{frame}{Design Documents}
+\end{frame}
+
+\begin{frame}{Views}
+\end{frame}
+
+\begin{frame}{List Functions}
+\end{frame}
+
+\begin{frame}{Show Functions}
+\end{frame}
+
+\subsection{Security and Validation}
 \begin{frame}
 \end{frame}
 
-\subsection{Querying documents through views}
-\begin{frame}
+\begin{frame}{Validation Function}
 \end{frame}
 
-\subsection{Security and validation}
-\begin{frame}
-\end{frame}
-
-\subsection{Distributed updates and replication}
-\begin{frame}
-\end{frame}
-
-\subsection{Implementation details}
+\subsection{Distributed Updates and Replication}
 \begin{frame}
 \end{frame}
 
@@ -181,7 +300,15 @@
 \end{frame}
 
 \subsection{Developing with CouchDB}
+\begin{frame}{Couchapps, Kanso and stuff}
+\end{frame}
+
+\subsection{Future Plans}
 \begin{frame}
+\end{frame}
+
+\subsection{Resources}
+\begin{frame}{Resources}
 \end{frame}
 
 \end{document}
