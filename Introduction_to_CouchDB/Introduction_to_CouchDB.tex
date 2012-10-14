@@ -2,16 +2,25 @@
 \usepackage[utf8]{inputenc}
 \usepackage{tikz}
 \usepackage{verbatim}
-\usetheme{Warsaw}
+\usetheme{Darmstadt}
 \title{Introduction to CouchDB}
 \author{Ondřej Kupka}
+
+\AtBeginSection[]
+{
+  \begin{frame}<beamer>
+    \frametitle{Section Layout}
+    \tableofcontents[currentsection]
+  \end{frame}
+}
+
 \begin{document}
 
 \begin{frame}
 \titlepage
 \end{frame}
 
-\section{Introduction}
+\section{The Big Picture}
 \subsection{Current Situation}
 \begin{frame}{Current Situation on the Databases Market}
   \begin{itemize}
@@ -31,8 +40,7 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Current Situation on the Databases Market}
-  \framesubtitle{New challenges}
+\begin{frame}{New Challenges}
   With the advent of web-scale applications, we are facing many new~challenges.
   Huge amount of loosely structured data needs to~be processed.
   What we seek is:
@@ -45,8 +53,7 @@
 \end{frame}
 
 \subsection{The Big Picture}
-\begin{frame}{The Big Picture}
-  \framesubtitle{CAP theorem (Brewer's theorem)}
+\begin{frame}{CAP (Brewer's) Theorem}
   No distributed computer system can simultaneously provide\\all of
   the following guarantees:
   \begin{itemize}
@@ -67,8 +74,7 @@
   and Nancy Lynch of MIT in 2002.\\
 \end{frame}
 
-\begin{frame}{The Big Picture}
-  \framesubtitle{Consistency model revised}
+\begin{frame}{Consistency Model Revised}
   \begin{description}
     \item[ACID] (pesimistic - Consistency + Availability) \hfill
     \begin{enumerate}
@@ -86,24 +92,8 @@
   \end{description} 
 \end{frame}
 
-\begin{frame}{The Big Picture}
-  \framesubtitle{More Basic Terms}
-  There are a few more terms we should understand\\before digging deeper:
-  \begin{itemize}
-    \item Replication
-    \begin{itemize}
-      \item master-slave
-      \item master-master
-    \end{itemize}
-    \item Sharding
-    \item Failover
-    \item MapReduce
-  \end{itemize}
-\end{frame}
-
 \subsection{The NoSQL Movement}
-\begin{frame}{The NoSQL Movement}
-  \framesubtitle{History and basic principles}
+\begin{frame}{History and Core Principles}
   \begin{itemize}
     \item In 1998 Carlo Strozzi used the term to name light-weight DBs with no SQL,
           and also no relations. He then suggested to call them 'NoREL'.
@@ -115,9 +105,8 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}{The NoSQL Movement}
-  \framesubtitle{Characteristics}
-  Among ideas characterizing the NoSQL databases are:
+\begin{frame}{Characteristics}
+  Among the ideas characterizing NoSQL databases are:
   \begin{itemize}
     \item High optimisation for just the basic (CRUD) operations
     \item Providing little functionality beyond record storage
@@ -132,8 +121,7 @@
   If you, however, pick up the right system for you, it can do magic.
 \end{frame}
 
-\begin{frame}{The NoSQL Movement}
-  \framesubtitle{Taxonomy of NoSQL databases}
+\begin{frame}{Taxonomy of NoSQL Databases}
   \begin{itemize}
     \item Key-value stores
     \item \alert<2>{Document stores}
@@ -146,8 +134,7 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]{The NoSQL Movement}
-  \framesubtitle{Document stores}
+\begin{frame}[fragile]{Document Stores}
   You can imagine a document store as a key-value store,\\but the database begins
   to understand the structure of values (called 'documents') stored in there,
   which implies:
@@ -164,10 +151,37 @@
   Examples: MongoDB, \alert<2>{CouchDB}, RavenDB (transactions!)
 \end{frame}
 
-\section{CouchDB in Details}
-\subsection{Basic principles}
-\begin{frame}{Basic principles}
+\section{Apache CouchDB}
+\subsection{CouchDB way of storing documents}
+\begin{frame}
+\end{frame}
 
+\subsection{Querying documents through views}
+\begin{frame}
+\end{frame}
+
+\subsection{Security and validation}
+\begin{frame}
+\end{frame}
+
+\subsection{Distributed updates and replication}
+\begin{frame}
+\end{frame}
+
+\subsection{Implementation details}
+\begin{frame}
+\end{frame}
+
+\subsection{Applications}
+\begin{frame}
+\end{frame}
+
+\subsection{When not to use CouchDB}
+\begin{frame}
+\end{frame}
+
+\subsection{Developing with CouchDB}
+\begin{frame}
 \end{frame}
 
 \end{document}
