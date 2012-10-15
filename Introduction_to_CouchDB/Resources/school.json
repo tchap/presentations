@@ -15,5 +15,8 @@
 	},
 	"shows": {
 		"sentence": "function(doc,req) { return {body: doc.name + ' is happening on ' + doc.day + '.', headers: {'Content-Type':'text/plain'}}};"
+	},
+	"filters": {
+		"subjects": "function(doc,req) { if (doc.type === 'subject') return true; else return false; }"	
 	}
 }

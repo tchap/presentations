@@ -294,25 +294,22 @@
     \item It uses so-called views, which are 
     \begin{itemize}
       \item virtual documents built out of the database content
-      \item rows consisting of a (complex) key and a value (MapReduce output)
+      \item rows consisting of a (complex) key and a value\\(MapReduce output)
       \item built on-demand and dynamically
       \item defined in a design document
       \item indexed to boost performance
     \end{itemize}
+    \item Possible to use key ranges, even with complex keys - query parameters
   \end{itemize}
   \fontsize{6}{8}\selectfont
   \begin{verbatim}
   $ cat school.json 
-  {
-    "_id": "_design/school",
-    "language": "javascript",
+  ...
     "views": {
       "count-monday-subjects": {
         "map": "function(doc) { if (doc.type === 'subject' && doc.day === 'Monday') emit(null, 1) };",
         "reduce": "function(key, values, rereduce) { return sum(values) };"
-      }
-    }
-  }
+    }}
   \end{verbatim}
 \end{frame}
 
@@ -417,32 +414,191 @@
 \end{frame}
 
 \subsection{Security and Validation}
-\begin{frame}
+\begin{frame}{Security Mechanisms}
+  Anyone can sign up just by posting username, password and list of roles!
+  Use ACLs and validation functions to limit access!
+  \begin{enumerate}
+    \item Database readers and roles allowed to read
+    \item Database admins and admin roles
+    \begin{itemize}
+      \item Create and delete a design document in the database
+      \item Modify ACLs in the database
+    \end{itemize}
+    \item System admins
+    \begin{itemize}
+      \item Create and delete a database
+      \item Trigger compaction
+      \item Restart the server
+      \item \ldots
+    \end{itemize}
+  \end{enumerate}
+  After signup you can use Basic auth, session cookie, OAuth or some external
+  mechanisms implemented as custom http handlers (\_browserid).
 \end{frame}
 
-\begin{frame}{Validation Function}
+\begin{frame}{Validation Functions}
+  While for read access you can use only readers list, for updates
+  it is possible to control permissions using custom validation function
+  \begin{enumerate}
+    \item validate\_doc\_update in the design document
+    \begin{itemize}
+      \item callback is function(oldDoc, newDoc, userCtx)
+    \end{itemize}
+    \item custom validation
+    \begin{enumerate}
+      \item Authorship
+      \item Checking for mandatory fields for a document type
+      \item \ldots
+    \end{enumerate}
+    \item Being check even during replication to remain consistent
+  \end{enumerate}
+  Problem: Nothing like that for read access (performance reasons).
+  Any real application will have to implement its own permissions system.
 \end{frame}
 
 \subsection{Distributed Updates and Replication}
-\begin{frame}
+\begin{frame}[fragile]{Distributed CouchDB}
+  \begin{itemize}
+    \item Very flexible, you can decide what fits you best
+    \begin{itemize}
+      \item Bidirectional master-master
+      \item Unidirectional master-slave
+      \item \ldots
+    \end{itemize}
+    \item Whole CouchDB apps are replicated, allowing offline usage
+    \item Incremental replication
+    \item Conflicts will occur and they need to be resolved
+  \end{itemize}
+  \fontsize{6}{8}\selectfont
+  \begin{verbatim}
+  $ curl -X POST http://127.0.0.1:5984/_replicate \
+  > -d '{"source":"testdb","target":"http://127.0.0.1:5984/replica"}'
+  {"ok":true,...,"docs_written":...,"doc_write_failures":...}]} -H "Content-Type: application/json"
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Replication in Details}
+  \framesubtitle{Changes Feed and Polling}
+  \begin{itemize}
+    \item \_changes feed where you can get incremental updates (seq)
+    \begin{enumerate}
+      \item Get changes since seq
+      \item Long polling
+      \item Continuous polling
+    \end{enumerate}
+    \item Various parameters - type, since, style, limit, filter, heartbeat
+    \item Admin users only!
+  \end{itemize}
+  \fontsize{6}{8}\selectfont
+  \begin{verbatim}
+  $ curl -X GET http://127.0.0.1:5984/testdb/_changes
+  {"results":[
+  {"seq":3,"id":"89027e7860926e4815267048520017ec","changes":[{"rev":"3-3182f9d7d36974848e9bcbb0f71dcfcc"}]},
+  {"seq":8,"id":"subject1","changes":[{"rev":"1-2d2c50a4bb45f66faec2498384967d56"}]},
+  {"seq":9,"id":"subject2","changes":[{"rev":"1-1c416829c2cc569f46eba9a1e48715b2"}]},
+  {"seq":20,"id":"_design/school","changes":[{"rev":"15-e25393d61666434af9b10fd90fd217d5"}]}
+  ],
+  "last_seq":20}
+  $ curl -X GET 'http://127.0.0.1:5984/testdb/_changes?feed=longpoll&since=21'
+  {"results":[
+  {"seq":22,"id":"subject4","changes":[{"rev":"1-172bf7cd66cda6f2ac4bacb38bc3884b"}]}
+  ],
+  "last_seq":22} # Close after receiving a change notification
+  $ curl -X GET 'http://127.0.0.1:5984/testdb/_changes?feed=continuous&since=22'
+  {"seq":23,"id":"subject5","changes":[{"rev":"1-9728ed4d447ca37748c07f44adab5ae4"}]}
+  ... # Wait
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Replication in Details}
+  \framesubtitle{Filter Functions}
+  \begin{itemize}
+    \item It is possible to limit what is replicated, getting just a subset
+    \item Defined, of course, in a design document
+    \item Passed as a parameter to \_changes
+    \item Useful for
+    \begin{itemize}
+      \item taking data offline
+      \item sharding implementation perhaps
+      \item \ldots
+    \end{itemize}
+  \end{itemize}
+  \fontsize{6}{8}\selectfont
+  \begin{verbatim}
+  $ grep -A2 filters school.json 
+  "filters": {
+    "subjects": "function(doc,req) { if (doc.type === 'subject') return true; else return false; }"	
+  }
+  $ curl -X GET 'http://127.0.0.1:5984/testdb/_changes?filter=school/subjects'
+  {"results":[
+  {"seq":8,"id":"subject1","changes":[{"rev":"1-2d2c50a4bb45f66faec2498384967d56"}]},
+  {"seq":9,"id":"subject2","changes":[{"rev":"1-1c416829c2cc569f46eba9a1e48715b2"}]},
+  {"seq":21,"id":"subject3","changes":[{"rev":"1-971e787275e3f8abcd739efff25077f9"}]},
+  {"seq":22,"id":"subject4","changes":[{"rev":"1-172bf7cd66cda6f2ac4bacb38bc3884b"}]},
+  {"seq":23,"id":"subject5","changes":[{"rev":"1-9728ed4d447ca37748c07f44adab5ae4"}]}
+  ],
+  "last_seq":25}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}{Replication in Details}
+  \framesubtitle{Conflicts}
+  \begin{itemize}
+    \item Conflicts occur during replication, \_bulk\_docs with all\_or\_nothing
+    \begin{itemize}
+      \item Two copies of a single DocID marked as conflicting
+    \end{itemize}
+    \item All conflicting revisions are still replicated, to be consistent
+    \item Deterministic algorithm to pick up the winner on all instances
+    \begin{itemize}
+      \item Longest revision history
+    \end{itemize}
+    \item doc.\_conflicts (possible to create simple view),\\GET doc?conflicts=true
+    \item Conflict resolution
+    \begin{enumerate}
+      \item Insert new revision of the doc
+      \item Delete one of the conflicting revisions
+    \end{enumerate}
+    \item Conflicts avoidance
+    \begin{itemize}
+      \item Conflicts never make it inside DB on a single node\\by editing docs
+    \end{itemize}
+  \end{itemize}
 \end{frame}
 
 \subsection{Applications}
-\begin{frame}
+\begin{frame}{Applications}
+  \framesubtitle{When to especially use CouchDB}
+  \begin{itemize}
+    \item Web applications (MVC, model can be a document, REST for Ajax)
+    \item Apps that occasionally go offline
+    \begin{itemize}
+      \item Mobile devices
+    \end{itemize}
+    \item Apps occasionally changing, with pre-defined queries
+    \item Simple apps can be served directly out of CouchDB
+    \item Scalability
+    \begin{itemize}
+      \item Powerful replication capabilities
+    \end{itemize}
+  \end{itemize}
 \end{frame}
 
-\subsection{When not to use CouchDB}
-\begin{frame}
-\end{frame}
-
-\subsection{Developing with CouchDB}
-\begin{frame}{Couchapps, Kanso and stuff}
+\subsection{Limitations}
+\begin{frame}{When not to use CouchDB and its Limitations}
+  \begin{itemize}
+    \item No ad-hoc queries(you can try CouchDB-Lucene, but...)
+    \item Lack of authentication and authorization
+    \item It is still a document storage
+    \item Not performance-focused, but rock solid
+    \item HTTP introduces overhead
+  \end{itemize}
 \end{frame}
 
 \subsection{What we did not cover}
-\begin{frame}
+\begin{frame}{What we did not cover}
   \begin{itemize}
-    \item Design document content completely
+    \item All "underscore" APIs
     \item Bulk updates
     \item Virtual hosts
     \item \ldots
@@ -451,6 +607,12 @@
 
 \subsection{Resources}
 \begin{frame}{Resources}
+  \begin{itemize}
+    \item http://wiki.apache.org/couchdb/ - official wiki
+    \item http://guide.couchdb.org/ - free book online
+    \item http://couchapp.org/page/index - simple apps\\hosted in CouchDB
+    \item http://kan.so/ - ya script for managing CouchDB Apps\\and dependencies
+  \end{itemize}
 \end{frame}
 
 \end{document}
