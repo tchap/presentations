@@ -1,4 +1,5 @@
 {
+	"_id": "subject1",
 	"type": "subject",
 	"name": "NoSQL Databases",
 	"day": "Monday"
