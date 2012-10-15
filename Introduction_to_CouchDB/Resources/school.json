@@ -1,0 +1,19 @@
+{
+	"_id": "_design/school",
+	"language": "javascript",
+	"views": {
+		"subject-day": {
+			"map": "function(doc) { if (doc.type === 'subject') emit(doc.name, doc.day) };"	
+		},
+		"count-monday-subjects": {
+			"map": "function(doc) { if (doc.type === 'subject' && doc.day === 'Monday') emit(null, 1) };",
+			"reduce": "function(key, values, rereduce) { return sum(values) };"
+		}
+	},
+	"lists": {
+		"table": "function(head,req) {provides('html', function(){var html = '<html><body><table>';while (row = getRow()) { html += '<tr><td>' + row.key + '</td><td>' + row.value + '</td></tr>';};html += '</table></body></html>';return html;});};"
+	},
+	"shows": {
+		"sentence": "function(doc,req) { return {body: doc.name + ' is happening on ' + doc.day + '.', headers: {'Content-Type':'text/plain'}}};"
+	}
+}

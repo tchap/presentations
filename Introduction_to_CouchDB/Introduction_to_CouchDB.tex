@@ -209,7 +209,8 @@
   \end{verbatim}
 \end{frame}
 
-\begin{frame}[fragile]{Demo 1 - Database and Document Creation}
+\begin{frame}[fragile]{Demo 1}
+  \framesubtitle{Database and Document Creation}
   \fontsize{6}{8}\selectfont
   \begin{verbatim}
   $ curl -X PUT http://127.0.0.1:5984/testdb
@@ -222,7 +223,8 @@
   \end{verbatim}
 \end{frame}
 
-\begin{frame}[fragile]{Demo 2 - Conflict Occurence and Resolution}
+\begin{frame}[fragile]{Demo 2}
+  \framesubtitle{Conflict Occurence and Resolution}
   \fontsize{6}{8}\selectfont
   \begin{verbatim}
   ME$ curl -X GET http://127.0.0.1:5984/testdb/89027e7860926e4815267048520017ec
@@ -257,7 +259,7 @@
     \begin{enumerate}
       \item All data and updates flushed to the disk synchronously
       \item Updated DB header written in two consecutive, identical chunks
-            to the beginning of the file, then flushed.
+            to the beginning of the file, then flushed
     \end{enumerate}
     \item Updates serialized except binary blobs
     \item B-tree indexes of documents (DocID, SeqID),\\B-trees everywhere
@@ -268,16 +270,149 @@
 \end{frame}
 
 \subsection{Querying and Manipulating Stored Data}
-\begin{frame}{Design Documents}
+\begin{frame}[fragile]{CouchDB Applications}
+  There are special documents called \textit{design documents},\\which contain
+  application code executed by CouchDB itself.\\It's a place for defining
+  more complex functionality, which then belongs to its namespace, forming
+  a piece that logically belongs together.
+  \fontsize{6}{8}\selectfont
+  \begin{verbatim}
+  $ cat school.json 
+  {
+      "_id": "_design/school"
+      "language": "javascript"
+  }
+  $ curl -X PUT http://127.0.0.1:5984/testdb/_design/school -d @school.json
+  {"ok":true,"id":"_design/school","rev":"3-a8b58733037866f8df127cede5d5ee9c"}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Views}
+  \framesubtitle{View Model}
+  \begin{itemize}
+    \item CouchDB can aggregate and report on documents using MapReduce
+    \item It uses so-called views, which are 
+    \begin{itemize}
+      \item virtual documents built out of the database content
+      \item built on-demand and dynamically
+      \item defined in a design document
+      \item indexed to boost performance
+    \end{itemize}
+  \end{itemize}
+  \fontsize{6}{8}\selectfont
+  \begin{verbatim}
+  $ cat school.json 
+  {
+    "_id": "_design/school",
+    "language": "javascript",
+    "views": {
+      "count-monday-subjects": {
+        "map": "function(doc) { if (doc.type === 'subject' && doc.day === 'Monday') emit(null, 1) };",
+        "reduce": "function(key, values, rereduce) { return sum(values) };"
+      }
+    }
+  }
+  \end{verbatim}
 \end{frame}
 
 \begin{frame}{Views}
+  \framesubtitle{View Indexes}
+  Views are indexed for better performance, or even to make views possible
+  \begin{itemize}
+    \item Implemented using B-tree
+    \item On-demand
+    \begin{itemize}
+      \item All views from a DD updated when any of them is requested
+    \end{itemize}
+    \item Checks only the documents changed from the last time (SeqID)
+    \item Runs up the B-tree of the index and recomputes only what necessary
+    \begin{itemize}
+      \item Performance
+      \item Concurrency
+    \end{itemize}
+  \end{itemize}
 \end{frame}
 
-\begin{frame}{List Functions}
+\begin{frame}[fragile]{Demo 3}
+  \framesubtitle{Using Views}
+  \fontsize{6}{8}\selectfont
+  \begin{verbatim}
+  $ cat subject{1,2}.json 
+  {
+    "type": "subject",
+    "name": "NoSQL Databases",
+    "day": "Monday"
+  }
+  {
+    "type": "subject",
+    "name": "Oracle Administration",
+    "day": "Monday"
+  }
+  $ curl -X PUT http://127.0.0.1:5984/testdb/subject1 -d @subject1.json
+  {"ok":true,"id":"subject1","rev":"1-2d2c50a4bb45f66faec2498384967d56"}
+  $ curl -X PUT http://127.0.0.1:5984/testdb/subject2 -d @subject2.json
+  {"ok":true,"id":"subject2","rev":"1-1c416829c2cc569f46eba9a1e48715b2"}
+  $ curl -X GET http://127.0.0.1:5984/testdb/_design/school/_view/count-monday-subjects
+  {"rows":[
+  {"key":null,"value":2}
+  ]}
+  \end{verbatim}
 \end{frame}
 
-\begin{frame}{Show Functions}
+\begin{frame}[fragile]{Show Functions}
+  \framesubtitle{... and Demo 4}
+  \begin{itemize}
+    \item A function generating a representation of a document
+  \end{itemize}
+  \fontsize{6}{8}\selectfont
+  \begin{verbatim}
+  $ cat school.json
+  ...
+    "shows": {
+      "sentence": "function(doc,req) { 
+        return {
+          body: doc.name + ' is happening on ' + doc.day + '.',
+          headers: {'Content-Type':'text/plain'}
+        }
+      };"
+    }
+  ...
+  $ curl -X GET http://127.0.0.1:5984/testdb/_design/school/_show/sentence/subject1
+  NoSQL Databases is happening on Monday.$
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{List Functions}
+  \framesubtitle{... and Demo 5}
+  \begin{itemize}
+    \item A rendering ("show") function for views
+    \item Allows iteration over the view
+  \end{itemize}
+  \fontsize{6}{8}\selectfont
+  \begin{verbatim}
+  $ cat school.json
+  ...
+  "views": {
+    "subject-day": {
+      "map": "function(doc) { if (doc.type === 'subject') emit(doc.name, doc.day) };"	
+    },
+  ...
+  "lists": {
+    "table": "function(head,req) {
+      provides('html', function() {
+        var html = '<html><body><table>';
+        while (row = getRow()) {
+          html += '<tr><td>' + row.key + '</td><td>' + row.value + '</td></tr>';
+        }
+        html += '</table></body></html>'; return html; });};"
+  },
+  ...
+  $ curl -X GET http://127.0.0.1:5984/testdb/_design/school/_list/table/subject-day
+  <html><body><table>
+    <tr><td>NoSQL Databases</td><td>Monday</td></tr>
+    <tr><td>Oracle Administration</td><td>Monday</td></tr>
+  </table></body></html>
+  \end{verbatim}
 \end{frame}
 
 \subsection{Security and Validation}
@@ -303,8 +438,14 @@
 \begin{frame}{Couchapps, Kanso and stuff}
 \end{frame}
 
-\subsection{Future Plans}
+\subsection{What we did not cover}
 \begin{frame}
+  \begin{itemize}
+    \item Design document content completely
+    \item Bulk updates
+    \item Virtual hosts
+    \item \ldots
+  \end{itemize}
 \end{frame}
 
 \subsection{Resources}
