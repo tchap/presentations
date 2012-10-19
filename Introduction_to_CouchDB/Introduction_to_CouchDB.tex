@@ -52,7 +52,7 @@
   We are, however, not living in a dreamworld \ldots
 \end{frame}
 
-\subsection{The Big Picture}
+\subsection{A Bit of Theory}
 \begin{frame}{CAP (Brewer's) Theorem}
   No distributed computer system can simultaneously provide\\all of
   the following guarantees:
@@ -75,6 +75,9 @@
 \end{frame}
 
 \begin{frame}{Consistency Model Revised}
+  We could leverage our requirements a bit in a distributed environment,
+  which would bring some issues, but also major befits.\\
+  It looks like it is worth it :-)
   \begin{description}
     \item[ACID] (pesimistic - Consistency + Availability) \hfill
     \begin{enumerate}
@@ -135,6 +138,7 @@
 \end{frame}
 
 \begin{frame}[fragile]{Document Stores}
+  \framesubtitle{What they are}
   You can imagine a document store as a key-value store,\\but the database begins
   to understand the structure of values (called 'documents') stored in there,
   which implies:
@@ -142,7 +146,7 @@
     \item Need for particular encoding of the data (XML, JSON, \ldots),
           but still no structure (no hard-coded schemas)
     \item It is possible to query the data (and do computations - MapReduce)
-    \item It works in a CRUD way, a document is the basic unit.
+    \item It works in a CRUD way, a document being the basic unit.
           Operations on documents are usually the only atomic thing.
   \end{itemize}
   \fontsize{8}{10}\selectfont
@@ -150,6 +154,21 @@
   { "firstName": "John", "lastName": "Smith" }
   \end{verbatim}
   Examples: MongoDB, \alert<2>{CouchDB}, RavenDB (transactions!)
+\end{frame}
+
+\begin{frame}{Document Stores}
+  \framesubtitle{Limitations}
+  \begin{itemize}
+    \item They are not a general-purpose databases
+    \begin{itemize}
+      \item They require a special care while designing an application
+    \end{itemize}
+    \item Lack of run time flexibility, no relations you can join
+    \item The basic units are documents, not fields inside of them
+    \begin{itemize}
+      \item Difficult to change a single piece of information if in many docs
+    \end{itemize}
+  \end{itemize}
 \end{frame}
 
 \section{CouchDB}
@@ -265,7 +284,7 @@
     \item B-tree indexes of documents (DocID, SeqID),\\B-trees everywhere
     \item Clients are never locked out - revision = consistent snapshot
     \item Compaction
-    \item Written in Erlang/OTP - concurrent (actors), robust, share-nothing
+    \item Written in Erlang/OTP, C++ - concurrent (actors), robust, share-nothing
   \end{itemize}
 \end{frame}
 
@@ -287,13 +306,14 @@
   \end{verbatim}
 \end{frame}
 
-\begin{frame}[fragile]{Views}
+\begin{frame}{Views}
   \framesubtitle{View Model}
   \begin{itemize}
     \item CouchDB can aggregate and report on documents using MapReduce
+    \item JavaScript with no side-effects (can use only the database content)
     \item It uses so-called views, which are 
     \begin{itemize}
-      \item virtual documents built out of the database content
+      \item virtual documents built out of the database content (but not JSON)
       \item rows consisting of a (complex) key and a value\\(MapReduce output)
       \item built on-demand and dynamically
       \item defined in a design document
@@ -301,6 +321,10 @@
     \end{itemize}
     \item Possible to use key ranges, even with complex keys - query parameters
   \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Demo 3}
+  \framesubtitle{Using Views}
   \fontsize{6}{8}\selectfont
   \begin{verbatim}
   $ cat school.json 
@@ -310,31 +334,6 @@
         "map": "function(doc) { if (doc.type === 'subject' && doc.day === 'Monday') emit(null, 1) };",
         "reduce": "function(key, values, rereduce) { return sum(values) };"
     }}
-  \end{verbatim}
-\end{frame}
-
-\begin{frame}{Views}
-  \framesubtitle{View Indexes}
-  Views are indexed for better performance, or even to make views possible
-  \begin{itemize}
-    \item Implemented using B-tree
-    \item On-demand
-    \begin{itemize}
-      \item All views from a DD updated when any of them is requested
-    \end{itemize}
-    \item Checks only the documents changed from the last time (SeqID)
-    \item Runs up the B-tree of the index and recomputes only what necessary
-    \begin{itemize}
-      \item Performance
-      \item Concurrency
-    \end{itemize}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]{Demo 3}
-  \framesubtitle{Using Views}
-  \fontsize{6}{8}\selectfont
-  \begin{verbatim}
   $ cat subject{1,2}.json 
   {
     "type": "subject",
@@ -355,6 +354,24 @@
   {"key":null,"value":2}
   ]}
   \end{verbatim}
+\end{frame}
+
+\begin{frame}{Views}
+  \framesubtitle{View Indexes}
+  Views are indexed for better performance, or even to make views possible
+  \begin{itemize}
+    \item Implemented using B-tree
+    \item On-demand
+    \begin{itemize}
+      \item All views from a DD updated when any of them is requested
+    \end{itemize}
+    \item Checks only the documents changed from the last time (SeqID)
+    \item Runs up the B-tree of the index and recomputes only what necessary
+    \begin{itemize}
+      \item Performance
+      \item Concurrency
+    \end{itemize}
+  \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]{Show Functions}
@@ -456,7 +473,7 @@
   Any real application will have to implement its own permissions system.
 \end{frame}
 
-\subsection{Distributed Updates and Replication}
+\subsection{Distributed CouchDB}
 \begin{frame}[fragile]{Distributed CouchDB}
   \begin{itemize}
     \item Very flexible, you can decide what fits you best
@@ -467,6 +484,7 @@
     \end{itemize}
     \item Whole CouchDB apps are replicated, allowing offline usage
     \item Incremental replication
+    \item Sharding
     \item Conflicts will occur and they need to be resolved
   \end{itemize}
   \fontsize{6}{8}\selectfont
@@ -566,11 +584,28 @@
   \end{itemize}
 \end{frame}
 
+\begin{frame}{Sharding in Details}
+  No implicit support, but do not panic! CouchDB uses HTTP so you can implement
+  basically anything on top of the RESTful API.
+  \begin{description}
+    \item[CouchDB Lounge] \hfill
+    \begin{itemize}
+      \item Hashing requests, keeping maps
+      \item ! view - handled by a Nginx module
+      \item view - handled by a Twisted standalone application
+    \end{itemize}
+    \item[BigCouch] \hfill
+    \begin{itemize}
+      \item Basically the same principles as Lounge
+      \item Quorum support
+    \end{itemize}
+  \end{description}
+\end{frame}
+
 \subsection{Applications}
-\begin{frame}{Applications}
-  \framesubtitle{When to especially use CouchDB}
+\begin{frame}{When to think about CouchDB}
   \begin{itemize}
-    \item Web applications (MVC, model can be a document, REST for Ajax)
+    \item Web applications (MVC, model can be a document,\\REST for Ajax)
     \item Apps that occasionally go offline
     \begin{itemize}
       \item Mobile devices
@@ -585,17 +620,17 @@
 \end{frame}
 
 \subsection{Limitations}
-\begin{frame}{When not to use CouchDB and its Limitations}
+\begin{frame}{When to forget about CouchDB}
   \begin{itemize}
-    \item No ad-hoc queries(you can try CouchDB-Lucene, but...)
-    \item Lack of authentication and authorization
     \item It is still a document storage
+    \item No ad-hoc queries (you can try CouchDB-Lucene, but...)
+    \item Lack of authentication and authorization
     \item Not performance-focused, but rock solid
     \item HTTP introduces overhead
   \end{itemize}
 \end{frame}
 
-\subsection{What we did not cover}
+\subsection{Not covered here}
 \begin{frame}{What we did not cover}
   \begin{itemize}
     \item All "underscore" APIs
@@ -606,7 +641,7 @@
 \end{frame}
 
 \subsection{Resources}
-\begin{frame}{Resources}
+\begin{frame}{Resources, QA}
   \begin{itemize}
     \item http://wiki.apache.org/couchdb/ - official wiki
     \item http://guide.couchdb.org/ - free book online
